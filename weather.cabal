@@ -15,7 +15,9 @@ executable weather
   default-extensions:  GeneralizedNewtypeDeriving,
                        OverloadedStrings,
                        MultiWayIf,
-                       BangPatterns
+                       BangPatterns,
+                       StandaloneDeriving,
+                       GADTs
 
   build-depends:       base                 >=4.8   && <4.9,
                        time                 >=1.5   && <2.0,

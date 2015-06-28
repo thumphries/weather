@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 module Types where
 
 import Data.Time (UTCTime)
@@ -6,7 +5,37 @@ import Data.Time (UTCTime)
 data LogEntry = LogEntry
   { leTime    :: UTCTime
   , leMeasure :: Measurement
-  } deriving (Show, Eq)
+  } deriving (Show)
+
+data Station = AUS | FRA | USA | Other String
+  deriving (Show, Eq)
+
+-- alternative: Length and Temperature typeclasses
+-- ... and use a GADT for measurement
+-- What do we even get out of this?
+-- ... 1. Unique 'station' representation, questionably useful
+-- ... 2. Distributes the station logic to the parser? Needs to be
+--        enforced somewhere... ok, here
+-- ... 3. Lose some ugly named functions like celToKel
+-- ... 4. Can normalise the data without erasing the station. Good!
+
+-- XXX Show constraint is regrettable
+data Measurement where
+  Measurement :: (Length a, Temperature b, Show a, Show b)
+              => Station -> Location a -> b -> Measurement
+
+deriving instance Show Measurement
+
+-- Station units are enforced here, and here only.
+mkMeasure :: Station -> (DUnit, DUnit) -> TUnit -> Measurement
+mkMeasure c@AUS (lx, ly) t =
+  Measurement c (Location (Kilometres lx) (Kilometres ly)) (Celsius t)
+mkMeasure c@FRA (lx, ly) t =
+  Measurement c (Location (Metres lx)     (Metres ly))     (Kelvin t)
+mkMeasure c@USA (lx, ly) t =
+  Measurement c (Location (Miles lx)      (Miles ly))      (Fahrenheit t)
+mkMeasure c@(Otherr s) (lx, ly) t =
+  Measurement c (Location (Metres lx)     (Metres ly))     (Kelvin t)
 
 -- Converting between units in Haskell is a bit of a shitshow.
 -- Someone with more time to spend on this exercise would force one of
@@ -21,79 +50,61 @@ data Fractional a => Location a = Location
   , locY :: a
   } deriving (Show, Eq)
 
-data Measurement
-  = AU    (Location Kilometres) Celsius
-  | US    (Location Miles)      Fahrenheit
-  | FR    (Location Metres)     Kelvin
-  | Other (Location Kilometres) Kelvin
-  deriving (Show, Eq)
-
-type DResolution = Double
-type TResolution = Double
+type DUnit = Double
+type TUnit = Double
 
 
+class Fractional a => Length a where
+  toMetres :: a -> Metres
 
-newtype Metres = Metres { unMetres :: DResolution }
+class Fractional a => Temperature a where
+  toKelvin :: a -> Kelvin
+
+
+newtype Metres = Metres { unMetres :: DUnit }
   deriving (Show, Eq, Num, Fractional)
 
-newtype Kilometres = Kilometres { unKilometres :: DResolution }
+instance Length Metres where
+  toMetres = id
+
+
+newtype Kilometres = Kilometres { unKilometres :: DUnit }
   deriving (Show, Eq, Num, Fractional)
 
-kmToMetres :: Kilometres -> Metres
-kmToMetres (Kilometres km) = Metres (km * 1000)
+instance Length Kilometres where
+  toMetres (Kilometres km) = Metres (km * 1000)
 
-newtype Miles = Miles { unMiles :: DResolution }
+
+
+newtype Miles = Miles { unMiles :: DUnit }
   deriving (Show, Eq, Num, Fractional)
 
-milesToMetres :: Miles -> Metres
-milesToMetres (Miles m) = Metres (m * 1609.34)
+-- XXX Check conversion
+instance Length Miles where
+  toMetres (Miles m) = Metres (m * 1609.34)
 
 
 
-newtype Kelvin = Kelvin { unKelvin :: TResolution }
+newtype Kelvin = Kelvin { unKelvin :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional)
 
-newtype Celsius = Celsius { unCelsius :: TResolution }
+instance Temperature Kelvin where
+  toKelvin = id
+
+
+
+newtype Celsius = Celsius { unCelsius :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional)
 
-celToKelvin :: Celsius -> Kelvin
-celToKelvin (Celsius c) = Kelvin (c + 273.15)
+instance Temperature Celsius where
+  toKelvin (Celsius c) = Kelvin (c + 273.15)
 
-newtype Fahrenheit = Fahrenheit { unFahrenheit :: TResolution }
+
+
+newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional)
 
-fahToKelvin :: Fahrenheit -> Kelvin
-fahToKelvin (Fahrenheit f) = Kelvin ((f + 459.67) * (5/9))
+-- XXX Check conversion
+instance Temperature Fahrenheit where
+  toKelvin (Fahrenheit f) = Kelvin ((f + 459.67) * (5/9))
 
-
-{-
-data Num a => Length a
-  = Metres a
-  | Kilometres a
-  | Miles a
-  deriving (Show, Eq)
-
-
--- problem: pretty ugly instance declaration here.
--- user will not expect the coercion to metres.
--- better to use newtypes
-
-instance (Num a, Fractional a) => Num (Length a) where
-  (Metres a) + (Metres b) = Metres (a + b)
-  a + b = toMetres a + toMetres b
-  (Metres a) * (Metres b) = Metres (a * b)
-  a * b = toMetres a * toMetres b
-  (Metres a) - (Metres b) = Metres (a - b)
-  a - b = toMetres a - toMetres b
-  abs (Metres a) = Metres (abs a)
-  abs b = abs (toMetres b)
-  signum (Metres a) = Metres (signum a)
-  signum b = signum (toMetres b)
-  fromInteger a = Metres (fromInteger a)
-
-instance (Num a, Fractional a) => Fractional (Length a) where
-  (Metres a) / (Metres b) = Metres (a / b)
-  a / b = toMetres a / toMetres b
-  fromRational a = Metres (fromRational a)
-
--}

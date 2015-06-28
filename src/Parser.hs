@@ -56,16 +56,20 @@ codeUS :: Code -> Bool
 codeUS = (==) "US"
 
 -- |Produce an entry with correct units from raw digits and an observatory code.
-mkEntry :: UTCTime -> (Natural, Natural) -> Integer -> Code -> LogEntry
-mkEntry time (lx, ly) temp code = LogEntry time $
-  if | codeAu code -> AU  (Location (fromIntegral lx) (fromIntegral ly))
+mkEntry :: UTCTime -> (Natural, Natural) -> Integer -> Station -> LogEntry
+mkEntry time (lx, ly) temp sta = LogEntry time
+  $ mkMeasure sta (fromIntegral lx, fromIntegral ly) (fromIntegral temp)
+
+{-
+  if | codeAu code -> AUS  (Location (fromIntegral lx) (fromIntegral ly))
                           (fromIntegral temp)
-     | codeFr code -> FR  (Location (fromIntegral lx) (fromIntegral ly))
+     | codeFr code -> FRA  (Location (fromIntegral lx) (fromIntegral ly))
                           (fromIntegral temp)
      | codeUS code -> US  (Location (fromIntegral lx) (fromIntegral ly))
                           (fromIntegral temp)
      | otherwise -> Other (Location (fromIntegral lx) (fromIntegral ly))
                           (fromIntegral temp)
+-}
 
 parseLine :: Parser LogEntry
 parseLine = do
@@ -75,9 +79,9 @@ parseLine = do
   pipe
   temp <- temperature
   pipe
-  code <- obsCode
+  sta  <- station
   A.try newline
-  return (mkEntry time loc temp code)
+  return (mkEntry time loc temp sta)
 
 -- yyyy-MM-ddThh:mm in UTC
 timeFormat :: String
@@ -98,8 +102,13 @@ location = do
 temperature :: Parser Integer
 temperature = A.signed A.decimal
 
-obsCode :: Parser Code
-obsCode = A.take 2
+station :: Parser Station
+station = do
+  two <- A.take 2
+  return $ if | two == "AU" -> AUS
+              | two == "US" -> USA
+              | two == "FR" -> FRA
+              | otherwise   -> Otherr (unpack two)
 
 pipe :: Parser Char
 pipe = A.char '|'

@@ -15,12 +15,8 @@ import           Types
 
 kelvinPipe :: MonadIO m => Pipe LogEntry Kelvin m ()
 kelvinPipe = forever $ do
-  (LogEntry _ measure) <- await
-  yield $ case measure of
-    AU _ temp -> celToKelvin temp
-    US _ temp -> fahToKelvin temp
-    FR _ temp -> temp
-    Other _ t -> t
+  (LogEntry _ (Measurement _ _ temp)) <- await
+  yield (toKelvin temp)
 
 minTemp :: MonadIO m => Producer LogEntry m () -> m (Maybe Kelvin)
 minTemp p = P.minimum (p >-> kelvinPipe)
@@ -35,16 +31,10 @@ meanTemp p = P.fold (\(!i, !k1) k2 -> (i+1, k1+k2))
         combine (0, _) = Nothing
         combine (i, k) = Just (k / fromIntegral i)
 
--- XXX regrettable that we don't have any types corresponding to
--- observatories at this point
 obsPipe :: MonadIO m => Pipe LogEntry String m ()
 obsPipe = forever $ do
-  (LogEntry _ measure) <- await
-  yield $ case measure of
-    AU _ _    -> "AU"
-    US _ _    -> "US"
-    FR _ _    -> "FR"
-    Other _ _ -> "Other"
+  (LogEntry _ (Measurement s _ _)) <- await
+  yield (Prelude.show s)
 
 obsCount :: MonadIO m => Producer LogEntry m () -> m (Map String Integer)
 obsCount p = P.fold (\m s -> M.alter fun s m) M.empty id (p >-> obsPipe)
