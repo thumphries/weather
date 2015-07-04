@@ -19,7 +19,8 @@ data Station = AUS | FRA | USA | Other String
 -- ... 3. Lose some ugly named functions like celToKel
 -- ... 4. Can normalise the data without erasing the station. Good!
 
--- XXX Show constraint is regrettable
+-- XXX Show constraint is regrettable. Luckily we coerce to Integer
+-- when rendering, so it will go away.
 data Measurement where
   Measurement :: (Length a, Temperature b, Show a, Show b)
               => Station -> Location a -> b -> Measurement
@@ -34,7 +35,7 @@ mkMeasure c@FRA (lx, ly) t =
   Measurement c (Location (Metres lx)     (Metres ly))     (Kelvin t)
 mkMeasure c@USA (lx, ly) t =
   Measurement c (Location (Miles lx)      (Miles ly))      (Fahrenheit t)
-mkMeasure c@(Otherr s) (lx, ly) t =
+mkMeasure c@(Other s) (lx, ly) t =
   Measurement c (Location (Metres lx)     (Metres ly))     (Kelvin t)
 
 -- Converting between units in Haskell is a bit of a shitshow.
@@ -107,4 +108,3 @@ newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
 -- XXX Check conversion
 instance Temperature Fahrenheit where
   toKelvin (Fahrenheit f) = Kelvin ((f + 459.67) * (5/9))
-

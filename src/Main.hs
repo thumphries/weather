@@ -4,6 +4,7 @@ import Pipes         as P
 import Pipes.Prelude as P
 
 import Analysis
+import Generator
 import Parser
 import Types
 

@@ -25,6 +25,7 @@ type Code = ByteString
 
 --------------------------------------------------------------------------------
 
+-- XXX Kinda arbitrary
 chunkSize :: Int
 chunkSize = 25
 
@@ -35,8 +36,7 @@ parseEffect :: IO ()
 parseEffect = runEffect $ PB.hGet 25 IO.stdin >-> parseLazy ""
                             >-> P.take 5 >-> P.print
 
--- Attoparsec's many1 combinator forces the input stream.
--- ... so, let's wrap it up and produce our own lazy stream with Pipes.
+-- Attoparsec isn't lazy enough, but Pipes are nice.
 parseLazy :: MonadIO m => ByteString -> Pipe ByteString LogEntry m ()
 parseLazy rem = do
   r <- A.parseWith await parseLine rem
@@ -45,15 +45,6 @@ parseLazy rem = do
             Fail rem _ _ -> parseLazy rem
 
 --------------------------------------------------------------------------------
-
-codeAu :: Code -> Bool
-codeAu = (==) "AU"
-
-codeFr :: Code -> Bool
-codeFr = (==) "FR"
-
-codeUS :: Code -> Bool
-codeUS = (==) "US"
 
 -- |Produce an entry with correct units from raw digits and an observatory code.
 mkEntry :: UTCTime -> (Natural, Natural) -> Integer -> Station -> LogEntry
@@ -108,7 +99,7 @@ station = do
   return $ if | two == "AU" -> AUS
               | two == "US" -> USA
               | two == "FR" -> FRA
-              | otherwise   -> Otherr (unpack two)
+              | otherwise   -> Other (unpack two)
 
 pipe :: Parser Char
 pipe = A.char '|'
