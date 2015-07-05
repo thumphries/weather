@@ -17,7 +17,8 @@ executable weather
                        MultiWayIf,
                        BangPatterns,
                        StandaloneDeriving,
-                       GADTs
+                       GADTs,
+                       ScopedTypeVariables
 
   build-depends:       base                 >=4.8   && <4.9,
                        time                 >=1.5   && <2.0,

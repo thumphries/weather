@@ -3,12 +3,19 @@ module Types where
 import Data.Time (UTCTime)
 
 data LogEntry = LogEntry
-  { leTime    :: UTCTime
-  , leMeasure :: Measurement
+  { leTime    :: !UTCTime
+  , leMeasure :: !Measurement
   } deriving (Show)
 
 data Station = AUS | FRA | USA | Other String
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Station where
+  show s = case s of
+    AUS -> "AU"
+    FRA -> "FR"
+    USA -> "US"
+    Other st -> take 2 st
 
 -- alternative: Length and Temperature typeclasses
 -- ... and use a GADT for measurement
@@ -46,7 +53,7 @@ mkMeasure c@(Other s) (lx, ly) t =
 -- - `quantities` is full of strings
 -- - `dimensional-dk` handles everything nicely but isn't on Hackage yet
 
-data Fractional a => Location a = Location
+data RealFrac a => Location a = Location
   { locX :: a
   , locY :: a
   } deriving (Show, Eq)
@@ -55,22 +62,22 @@ type DUnit = Double
 type TUnit = Double
 
 
-class Fractional a => Length a where
+class RealFrac a => Length a where
   toMetres :: a -> Metres
 
-class Fractional a => Temperature a where
+class RealFrac a => Temperature a where
   toKelvin :: a -> Kelvin
 
 
 newtype Metres = Metres { unMetres :: DUnit }
-  deriving (Show, Eq, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Length Metres where
   toMetres = id
 
 
 newtype Kilometres = Kilometres { unKilometres :: DUnit }
-  deriving (Show, Eq, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Length Kilometres where
   toMetres (Kilometres km) = Metres (km * 1000)
@@ -78,7 +85,7 @@ instance Length Kilometres where
 
 
 newtype Miles = Miles { unMiles :: DUnit }
-  deriving (Show, Eq, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 -- XXX Check conversion
 instance Length Miles where
@@ -87,7 +94,7 @@ instance Length Miles where
 
 
 newtype Kelvin = Kelvin { unKelvin :: TUnit }
-  deriving (Show, Eq, Ord, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Temperature Kelvin where
   toKelvin = id
@@ -95,7 +102,7 @@ instance Temperature Kelvin where
 
 
 newtype Celsius = Celsius { unCelsius :: TUnit }
-  deriving (Show, Eq, Ord, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Temperature Celsius where
   toKelvin (Celsius c) = Kelvin (c + 273.15)
@@ -103,7 +110,7 @@ instance Temperature Celsius where
 
 
 newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
-  deriving (Show, Eq, Ord, Num, Fractional)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 -- XXX Check conversion
 instance Temperature Fahrenheit where

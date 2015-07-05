@@ -8,9 +8,10 @@ import qualified Data.Attoparsec.ByteString.Char8 as A
 import           Data.ByteString                  (ByteString)
 import qualified Data.ByteString                  as B
 import           Data.ByteString.Char8            (pack, unpack)
+import           Data.List                        (intercalate)
 import           Data.Time                        (FormatTime (..), UTCTime,
                                                    defaultTimeLocale,
-                                                   parseTimeM)
+                                                   formatTime, parseTimeM)
 import           Numeric.Natural
 import           System.IO                        as IO
 
@@ -34,17 +35,31 @@ parser = PB.hGet chunkSize IO.stdin >-> parseLazy ""
 
 parseEffect :: IO ()
 parseEffect = runEffect $ PB.hGet 25 IO.stdin >-> parseLazy ""
-                            >-> P.take 5 >-> P.print
+                            >-> prettyPipe >-> P.print
 
 -- Attoparsec isn't lazy enough, but Pipes are nice.
-parseLazy :: MonadIO m => ByteString -> Pipe ByteString LogEntry m ()
+parseLazy :: Monad m => ByteString -> Pipe ByteString LogEntry m ()
 parseLazy rem = do
   r <- A.parseWith await parseLine rem
   case r of Done rem le  -> yield le >> parseLazy rem
             Partial cb   -> undefined -- XXX Can this occur?
             Fail rem _ _ -> parseLazy rem
 
+prettyPipe :: Monad m => Pipe LogEntry ByteString m ()
+prettyPipe = forever $ do
+  next <- await
+  yield (pack (pretty next))
+
 --------------------------------------------------------------------------------
+
+pretty :: LogEntry -> String
+pretty (LogEntry time (Measurement st (Location x y) temp)) =
+  intercalate "|" [ti, loc, te, sta]
+  where ti  = formatTime defaultTimeLocale timeFormat time
+        loc = show (round x) ++ "," ++ show (round y)
+        te  = show (round temp)
+        sta = show st
+
 
 -- |Produce an entry with correct units from raw digits and an observatory code.
 mkEntry :: UTCTime -> (Natural, Natural) -> Integer -> Station -> LogEntry
