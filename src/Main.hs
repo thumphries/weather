@@ -10,21 +10,8 @@ import Generator
 import Parser
 import Types
 
-main :: IO ()
-main = do
-  opts <- execParser (options `withInfo` "Weather balloon megaprocessor")
-  Prelude.print opts
-
-  -- runEffect $ perfectInput >-> P.take 500000000 >-> PB.stdout
-  -- abc <- P.last (perfectInput >-> P.take 500000000)
-  -- Prelude.print abc
-{-
-  temp <- obsCount parser
-  Prelude.print temp
--}
-
 data Options
-  = Generate Integer GenOpts
+  = Generate Int GenOpts
   | Process  ProcOpts
   deriving (Show)
 
@@ -47,6 +34,26 @@ data ProcOpts
 -- XXX Should carry this at type level using definitions in Types
 data DistUnit = KM | MI | ME deriving (Show)
 data TempUnit = C | K | F    deriving (Show)
+
+
+
+main :: IO ()
+main = run =<< execParser (options `withInfo` "Weather balloon megaprocessor")
+
+run :: Options -> IO ()
+run (Generate n opts) =
+  let generator = case opts of Perfect   -> perfectInput
+                               Realistic -> realisticInput
+                               Nightmare -> nightmareInput
+                               Custom p  -> paramStream p
+  in runEffect $ generator >-> P.take n >-> PB.stdout
+run (Process opts) = case opts of
+  MinTemp        -> minTemp  parser   >>= Prelude.print
+  MaxTemp        -> maxTemp  parser   >>= Prelude.print
+  MeanTemp       -> meanTemp parser   >>= Prelude.print
+  StationDistrib -> obsCount parser   >>= Prelude.print
+  Distance s     -> distance s parser >>= Prelude.print
+  Normalise d t  -> undefined
 
 -- With thanks to ThoughtBot, a free --help field
 -- https://robots.thoughtbot.com/applicative-options-parsing-in-haskell

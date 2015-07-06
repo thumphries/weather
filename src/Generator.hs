@@ -16,8 +16,6 @@ import           System.Random
 import           Parser
 import           Types
 
-import Debug.Trace
-
 data Parameters = P
   { pOrdered :: Double
   , pNewline :: Double
