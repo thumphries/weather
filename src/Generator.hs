@@ -66,6 +66,10 @@ paramStream p = do
 maxInt :: Integer
 maxInt = 4294967296
 
+-- XXX arbitrary
+medInt :: Integer
+medInt = 10000
+
 -- XXX also arbitrary
 smallInt :: Integer
 smallInt = 720
@@ -74,9 +78,9 @@ smallInt = 720
 cleanMeasure :: Monad m => StdGen -> Producer Measurement m ()
 cleanMeasure  g = do
   let rand0 x g = randomR (0, x) g :: (Integer, StdGen)
-      (x, g1)   = rand0 maxInt g
-      (y, g2)   = rand0 maxInt g1
-      (t, g3)   = rand0 maxInt g2
+      (x, g1)   = rand0 medInt g
+      (y, g2)   = rand0 medInt g1
+      (t, g3)   = rand0 smallInt g2
       (s, g4)   = rand0 3      g3
       (c1, g5)  = randomR ('A', 'Z') g4
       (c2, g6)  = randomR ('A', 'Z') g5

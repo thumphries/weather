@@ -66,17 +66,6 @@ mkEntry :: UTCTime -> (Natural, Natural) -> Integer -> Station -> LogEntry
 mkEntry time (lx, ly) temp sta = LogEntry time
   $ mkMeasure sta (fromIntegral lx, fromIntegral ly) (fromIntegral temp)
 
-{-
-  if | codeAu code -> AUS  (Location (fromIntegral lx) (fromIntegral ly))
-                          (fromIntegral temp)
-     | codeFr code -> FRA  (Location (fromIntegral lx) (fromIntegral ly))
-                          (fromIntegral temp)
-     | codeUS code -> US  (Location (fromIntegral lx) (fromIntegral ly))
-                          (fromIntegral temp)
-     | otherwise -> Other (Location (fromIntegral lx) (fromIntegral ly))
-                          (fromIntegral temp)
--}
-
 parseLine :: Parser LogEntry
 parseLine = do
   time <- parseTime
