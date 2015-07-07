@@ -66,6 +66,12 @@ obsCount p = P.fold (\m s -> M.alter fun s m) M.empty id (p >-> obsPipe)
         fun Nothing = Just 1
         fun (Just !i) = Just (i + 1)
 
+orderPipe' :: Monad m => Integer -> Producer LogEntry m () -> Producer LogEntry m ()
+orderPipe' i p = do
+  undefined
+  -- use head and yield
+  -- mapM_ yield list
+
 -- XXX Could hold onto entries when empty. Needs a way to flush on empty
 orderPipe :: Monad m => Integer -> Pipe LogEntry LogEntry m ()
 orderPipe maxDelay = go H.empty

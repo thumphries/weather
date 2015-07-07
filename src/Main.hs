@@ -29,6 +29,7 @@ data ProcOpts
   | StationDistrib
   | Distance Integer
   | Normalise DistUnit TempUnit
+  | Count
   deriving (Show)
 
 main :: IO ()
@@ -48,6 +49,7 @@ run (Process opts) = case opts of
   StationDistrib -> obsCount parser                        >>= Prelude.print
   Distance s     -> (distance s parser :: IO Metres)       >>= Prelude.print
   Normalise d t  -> undefined
+  Count          -> P.length parser                        >>= Prelude.print
 
 -- With thanks to ThoughtBot, a free --help field
 -- https://robots.thoughtbot.com/applicative-options-parsing-in-haskell
@@ -95,7 +97,8 @@ parseProcOpts = subparser $
   command "distance" (parseDistance `withInfo`
     "Total distance travelled (requires maximum delay assumption in secs)") <>
   command "normalise" (parseNormalise `withInfo`
-    "Normalise data into chosen distance and temperature units")
+    "Normalise data into chosen distance and temperature units") <>
+  command "count" (pure Count `withInfo` "Count valid parses")
 
 parseDistance :: Parser ProcOpts
 parseDistance = Distance <$> argument auto (metavar "MAX_DELAY")

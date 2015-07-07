@@ -18,6 +18,17 @@ Notes
 - I know `UTCTime` et al are hella slow, but `thyme` pulls in `lens`,
   and we don't have all day to compile this thing.
 
+Check out the commit history if you'd like to see me stumble through a
+couple of representations. Using typeclasses for Length and
+Temperature always seemed like the idiomatic way to go, but there was
+also the need to have a heterogeneous list or stream of measurements.
+I used a GADT to allow a polymorphic constructor, but... couldn't
+normalise the data, since the types were buried. Of course, bringing
+the types out to the top level would have required either HList or
+universally-quantified functions. The concept I'd been reaching for
+(and missing) was just `-XExistentialQuantification` with
+`RankNTypes`, and using `forall` instead of the GADT did the job.
+
 
 Task: Weather Observations
 --------------------
