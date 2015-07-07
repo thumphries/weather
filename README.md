@@ -1,11 +1,19 @@
 Notes
 -----
 
-- Use the `--help` flag until I write up the usage.
+- Use the `--help` flag or look at `Main` until I write up the usage.
+- Missing functionality: ability to evaluate different metrics at the
+  same time. Adding this is just a matter of nesting the option
+  parsers, creating a `ProcOpts` record instead of a sum, and using
+  `Pipes.tee` to split up the parser stream.
+- Min, mean and max are artificially limited to Kelvin for now.
+  The functions are polymorphic, I just did not have time to implement
+  the optparse dispatch. 
 - There are quite arbitrary bounds on the numbers generated; standard
   deviation is also quite low. The mean temperature on generated data
   tends to be within a very narrow range. At time of writing, unknown
   stations were far too prominent, flooding the data with Kelvin.
+  All just a matter of tweaking some of the parameters in `Generator`.
 - I'm pretty sure Parsec has some lazy combinators like `many1`, but
   Attoparsec sure doesn't. The input stream kept getting forced. This led
   to the use of Pipes, which ended up being very nifty for the other

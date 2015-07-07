@@ -22,7 +22,7 @@ data Parameters = P
   , pMutate  :: Double
   } deriving (Show, Eq, Ord)
 
--- Public interface.
+-- Clean input. 100% successful parse.
 perfectInput :: MonadIO m => Producer ByteString m ()
 perfectInput = paramStream p
   where p = P { pOrdered = 0
@@ -30,15 +30,15 @@ perfectInput = paramStream p
               , pMutate  = 0
               }
 
--- Stream of semi-garbled input
+-- Stream of semi-garbled input. ~95% successful parse.
 realisticInput :: MonadIO m => Producer ByteString m ()
 realisticInput = paramStream p
-  where p = P { pOrdered = 0.1
+  where p = P { pOrdered = 0.05
               , pNewline = 0.05
-              , pMutate  = 0.000005
+              , pMutate  = 0.005
               }
 
--- Stream of very garbled input
+-- Stream of very garbled input. ~10% successful parse.
 nightmareInput :: MonadIO m => Producer ByteString m ()
 nightmareInput = paramStream p
   where p = P { pOrdered = 0.5
@@ -106,7 +106,7 @@ orderedEntries g =
                           })
           go newTime h1
 
--- ... Optionally, we reorder them (use some bounded queue)
+-- ... Optionally, we reorder them (hang onto an item and reinsert it randomly)
 reorderedEntries :: Monad m => Double -> StdGen -> Pipe LogEntry LogEntry m ()
 reorderedEntries r g = go Nothing g
   where go stashed g = do
@@ -134,7 +134,7 @@ mutateEntry r g = do
   let (f, g1) = randomR (0, 1) g  :: (Double, StdGen)
       (c, g2) = randomR (0, 5) g1 :: (Int, StdGen)
       mutated = mutate (B.length next) c g2 next
-  if f >= r then yield mutated else yield next
+  if f >= r then yield next else yield mutated
   mutateEntry r (fst (split g2))
   where mutate :: Int -> Int -> StdGen -> ByteString -> ByteString
         mutate _   0 _ s = s

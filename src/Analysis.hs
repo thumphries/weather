@@ -29,7 +29,7 @@ locPipe = forever $ do
 normTempPipe :: Monad m => TempUnit -> Pipe LogEntry LogEntry m ()
 normTempPipe u = forever $ do
   (LogEntry ti (Measurement st loc te)) <- await
-  yield . LogEntry ti $ case u of 
+  yield . LogEntry ti $ case u of
     C -> Measurement st loc (tconvert te :: Celsius)
     K -> Measurement st loc (tconvert te :: Kelvin)
     F -> Measurement st loc (tconvert te :: Fahrenheit)
@@ -66,30 +66,29 @@ obsCount p = P.fold (\m s -> M.alter fun s m) M.empty id (p >-> obsPipe)
         fun Nothing = Just 1
         fun (Just !i) = Just (i + 1)
 
-orderPipe' :: Monad m => Integer -> Producer LogEntry m () -> Producer LogEntry m ()
-orderPipe' i p = do
-  undefined
-  -- use head and yield
-  -- mapM_ yield list
-
--- XXX Could hold onto entries when empty. Needs a way to flush on empty
-orderPipe :: Monad m => Integer -> Pipe LogEntry LogEntry m ()
-orderPipe maxDelay = go H.empty
-  where go :: Monad m => Heap (Entry UTCTime Measurement)
-           -> Pipe LogEntry LogEntry m ()
-        go heap = do
-          (LogEntry time m) <- await
-          let heap'  = H.insert (Entry time m) heap
-              (a, b) = flush time heap'
-          _ <- H.mapM (\(Entry t m) -> yield (LogEntry t m)) a
-          go b
-        flush bound = H.partition
-          (\(Entry t _) -> abs (diffUTCTime bound t) >= fromIntegral maxDelay)
+orderPipe :: Monad m => Integer -> Producer LogEntry m ()
+           -> Producer LogEntry m ()
+orderPipe maxDelay p = go p H.empty
+  where go :: Monad m => Producer LogEntry m ()
+           -> Heap (Entry UTCTime Measurement) -> Producer LogEntry m ()
+        go p heap = do
+          may <- lift $ P.head p
+          case may of Nothing -> flush heap
+                      Just (LogEntry t m) -> do
+                        let heap' = H.insert (Entry t m) heap
+                            (a, b) = part t heap'
+                        void (flush a)
+                        go p b
+        flush :: Monad m => Heap (Entry UTCTime Measurement)
+              -> Producer LogEntry m ()
+        flush = void . H.mapM (\(Entry t m) -> yield (LogEntry t m))
+        part t = H.partition
+          (\(Entry t2 _) -> abs (diffUTCTime t t2) >= fromIntegral maxDelay)
 
 distance :: (Monad m, Length l) => Integer -> Producer LogEntry m () -> m l
 distance n p = P.fold
   (\(p1, d) p2 -> (p2, pointwiseDistance p1 p2)) (Location 0 0, 0) snd
-  (p >-> orderPipe n >-> locPipe)
+  (orderPipe n p >-> locPipe)
 
 pointwiseDistance :: Length l => Location l -> Location l -> l
 pointwiseDistance (Location x1 y1) (Location x2 y2) = realToFrac dist

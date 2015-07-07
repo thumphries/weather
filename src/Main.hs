@@ -88,7 +88,7 @@ parseParams = P
 parseProc :: Parser Options
 parseProc = Process <$> parseProcOpts
 
--- XXX "Any combination of" - should be a product, not a sum
+-- XXX "Any combination of" - should be a product, not a sum, and use tee
 parseProcOpts :: Parser ProcOpts
 parseProcOpts = subparser $
   command "min" (pure MinTemp `withInfo` "Calculate minimum temp in K") <>
