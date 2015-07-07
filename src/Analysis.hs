@@ -16,27 +16,42 @@ import           Types
 
 -- - normalised output
 
-kelvinPipe :: Monad m => Pipe LogEntry Kelvin m ()
-kelvinPipe = forever $ do
+tempPipe :: (Monad m, Temperature t) => Pipe LogEntry t m ()
+tempPipe = forever $ do
   (LogEntry _ (Measurement _ _ temp)) <- await
-  yield (toKelvin temp)
+  yield (tconvert temp)
 
-metresPipe :: Monad m => Pipe LogEntry (Location Metres) m ()
-metresPipe = forever $ do
+locPipe :: (Monad m, Length l) => Pipe LogEntry (Location l) m ()
+locPipe = forever $ do
   (LogEntry _ (Measurement _ (Location x y) _)) <- await
-  yield (Location (toMetres x) (toMetres y))
+  yield (Location (lconvert x) (lconvert y))
 
+normTempPipe :: Monad m => TempUnit -> Pipe LogEntry LogEntry m ()
+normTempPipe u = forever $ do
+  (LogEntry ti (Measurement st loc te)) <- await
+  yield . LogEntry ti $ case u of 
+    C -> Measurement st loc (tconvert te :: Celsius)
+    K -> Measurement st loc (tconvert te :: Kelvin)
+    F -> Measurement st loc (tconvert te :: Fahrenheit)
 
-minTemp :: Monad m => Producer LogEntry m () -> m (Maybe Kelvin)
-minTemp p = P.minimum (p >-> kelvinPipe)
+normLocPipe :: Monad m => DistUnit -> Pipe LogEntry LogEntry m ()
+normLocPipe u = forever $ do
+  (LogEntry ti (Measurement st (Location x y) te)) <- await
+  yield . LogEntry ti $ case u of
+    ME -> Measurement st (Location (lconvert x) (lconvert y) :: Location Metres) te
+    MI -> Measurement st (Location (lconvert x) (lconvert y) :: Location Miles) te
+    KM -> Measurement st (Location (lconvert x) (lconvert y) :: Location Kilometres) te
 
-maxTemp :: Monad m => Producer LogEntry m () -> m (Maybe Kelvin)
-maxTemp p = P.maximum (p >-> kelvinPipe)
+minTemp :: (Temperature t, Monad m) => Producer LogEntry m () -> m (Maybe t)
+minTemp p = P.minimum (p >-> tempPipe)
 
-meanTemp :: Monad m => Producer LogEntry m () -> m (Maybe Kelvin)
+maxTemp :: (Temperature t, Monad m) => Producer LogEntry m () -> m (Maybe t)
+maxTemp p = P.maximum (p >-> tempPipe)
+
+meanTemp :: (Monad m, Temperature t) => Producer LogEntry m () -> m (Maybe t)
 meanTemp p = P.fold (\(!i, !k1) k2 -> (i+1, k1+k2))
-                    (0, Kelvin 0) combine (p >-> kelvinPipe)
-  where combine :: (Integer, Kelvin) -> Maybe Kelvin
+                    (0, 0) combine (p >-> tempPipe)
+  where combine :: RealFrac t => (Integer, t) -> Maybe t
         combine (0, _) = Nothing
         combine (i, k) = Just (k / fromIntegral i)
 
@@ -65,14 +80,14 @@ orderPipe maxDelay = go H.empty
         flush bound = H.partition
           (\(Entry t _) -> abs (diffUTCTime bound t) >= fromIntegral maxDelay)
 
-distance :: Monad m => Integer -> Producer LogEntry m () -> m Metres
+distance :: (Monad m, Length l) => Integer -> Producer LogEntry m () -> m l
 distance n p = P.fold
   (\(p1, d) p2 -> (p2, pointwiseDistance p1 p2)) (Location 0 0, 0) snd
-  -- (p >-> metresPipe)
-  (p >-> orderPipe n >-> metresPipe)
+  (p >-> orderPipe n >-> locPipe)
 
-pointwiseDistance :: Location Metres -> Location Metres -> Metres
-pointwiseDistance (Location x1 y1) (Location x2 y2) = Metres dist
+pointwiseDistance :: Length l => Location l -> Location l -> l
+pointwiseDistance (Location x1 y1) (Location x2 y2) = realToFrac dist
   where squx = (x1 - x2) ^ 2
         squy = (y1 - y2) ^ 2
         dist = sqrt (realToFrac (squx + squy))
+

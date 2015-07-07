@@ -31,12 +31,6 @@ data ProcOpts
   | Normalise DistUnit TempUnit
   deriving (Show)
 
--- XXX Should carry this at type level using definitions in Types
-data DistUnit = KM | MI | ME deriving (Show)
-data TempUnit = C | K | F    deriving (Show)
-
-
-
 main :: IO ()
 main = run =<< execParser (options `withInfo` "Weather balloon megaprocessor")
 
@@ -48,11 +42,11 @@ run (Generate n opts) =
                                Custom p  -> paramStream p
   in runEffect $ generator >-> P.take n >-> PB.stdout
 run (Process opts) = case opts of
-  MinTemp        -> minTemp  parser   >>= Prelude.print
-  MaxTemp        -> maxTemp  parser   >>= Prelude.print
-  MeanTemp       -> meanTemp parser   >>= Prelude.print
-  StationDistrib -> obsCount parser   >>= Prelude.print
-  Distance s     -> distance s parser >>= Prelude.print
+  MinTemp        -> (minTemp  parser :: IO (Maybe Kelvin)) >>= Prelude.print
+  MaxTemp        -> (maxTemp  parser :: IO (Maybe Kelvin)) >>= Prelude.print
+  MeanTemp       -> (meanTemp parser :: IO (Maybe Kelvin)) >>= Prelude.print
+  StationDistrib -> obsCount parser                        >>= Prelude.print
+  Distance s     -> (distance s parser :: IO Metres)       >>= Prelude.print
   Normalise d t  -> undefined
 
 -- With thanks to ThoughtBot, a free --help field

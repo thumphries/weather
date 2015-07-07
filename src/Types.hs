@@ -5,7 +5,7 @@ import Data.Time (UTCTime)
 data LogEntry = LogEntry
   { leTime    :: !UTCTime
   , leMeasure :: !Measurement
-  } deriving (Show)
+  }
 
 data Station = AUS | FRA | USA | Other String
   deriving (Eq)
@@ -26,13 +26,8 @@ instance Show Station where
 -- ... 3. Lose some ugly named functions like celToKel
 -- ... 4. Can normalise the data without erasing the station. Good!
 
--- XXX Show constraint is regrettable. Luckily we coerce to Integer
--- when rendering, so it will go away.
-data Measurement where
-  Measurement :: (Length a, Temperature b, Show a, Show b)
-              => Station -> Location a -> b -> Measurement
-
-deriving instance Show Measurement
+data Measurement = forall a b. (Length a, Temperature b)
+                 => Measurement Station (Location a) b
 
 -- Station units are enforced here, and here only.
 mkMeasure :: Station -> (DUnit, DUnit) -> TUnit -> Measurement
@@ -61,12 +56,22 @@ data RealFrac a => Location a = Location
 type DUnit = Double
 type TUnit = Double
 
+-- XXX This is only used for dispatching / monomorphising.
+-- Should be able to replace it with GHC extension magic, DK, PK
+data DistUnit = KM | MI | ME deriving (Show)
+data TempUnit = C | K | F    deriving (Show)
 
 class RealFrac a => Length a where
   toMetres :: a -> Metres
+  fromMetres :: Metres -> a
+  lconvert :: Length b => b -> a
+  lconvert = fromMetres . toMetres
 
 class RealFrac a => Temperature a where
   toKelvin :: a -> Kelvin
+  fromKelvin :: Kelvin -> a
+  tconvert :: Temperature b => b -> a
+  tconvert = fromKelvin . toKelvin
 
 
 newtype Metres = Metres { unMetres :: DUnit }
@@ -74,6 +79,7 @@ newtype Metres = Metres { unMetres :: DUnit }
 
 instance Length Metres where
   toMetres = id
+  fromMetres = id
 
 
 newtype Kilometres = Kilometres { unKilometres :: DUnit }
@@ -81,6 +87,7 @@ newtype Kilometres = Kilometres { unKilometres :: DUnit }
 
 instance Length Kilometres where
   toMetres (Kilometres km) = Metres (km * 1000)
+  fromMetres (Metres m) = Kilometres (m / 1000)
 
 
 
@@ -90,6 +97,7 @@ newtype Miles = Miles { unMiles :: DUnit }
 -- XXX Check conversion
 instance Length Miles where
   toMetres (Miles m) = Metres (m * 1609.34)
+  fromMetres (Metres m) = Miles (m / 1609.34)
 
 
 
@@ -98,6 +106,7 @@ newtype Kelvin = Kelvin { unKelvin :: TUnit }
 
 instance Temperature Kelvin where
   toKelvin = id
+  fromKelvin = id
 
 
 
@@ -106,7 +115,7 @@ newtype Celsius = Celsius { unCelsius :: TUnit }
 
 instance Temperature Celsius where
   toKelvin (Celsius c) = Kelvin (c + 273.15)
-
+  fromKelvin (Kelvin k) = Celsius (k - 273.15)
 
 
 newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
@@ -115,3 +124,4 @@ newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
 -- XXX Check conversion
 instance Temperature Fahrenheit where
   toKelvin (Fahrenheit f) = Kelvin ((f + 459.67) * (5/9))
+  fromKelvin (Kelvin k) = Fahrenheit ((k / (5/9)) - 459.67)
