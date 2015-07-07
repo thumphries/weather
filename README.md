@@ -2,6 +2,10 @@ Notes
 -----
 
 - Use the `--help` flag until I write up the usage.
+- There are quite arbitrary bounds on the numbers generated; standard
+  deviation is also quite low. The mean temperature on generated data
+  tends to be within a very narrow range. At time of writing, unknown
+  stations were far too prominent, flooding the data with Kelvin.
 - I'm pretty sure Parsec has some lazy combinators like `many1`, but
   Attoparsec sure doesn't. The input stream kept getting forced. This led
   to the use of Pipes, which ended up being very nifty for the other

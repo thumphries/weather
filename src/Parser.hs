@@ -21,6 +21,8 @@ import qualified Pipes.ByteString as PB
 
 import           Types
 
+import Debug.Trace
+
 type Line = (UTCTime, (Natural, Natural), Int, Code)
 type Code = ByteString
 
@@ -42,8 +44,8 @@ parseLazy :: Monad m => ByteString -> Pipe ByteString LogEntry m ()
 parseLazy rem = do
   r <- A.parseWith await parseLine rem
   case r of Done rem le  -> yield le >> parseLazy rem
-            Partial cb   -> undefined -- XXX Can this occur?
             Fail rem _ _ -> parseLazy rem
+            Partial cb   -> error "parseWith invariant failed!"
 
 prettyPipe :: Monad m => Pipe LogEntry ByteString m ()
 prettyPipe = forever $ do
@@ -75,7 +77,7 @@ parseLine = do
   temp <- temperature
   pipe
   sta  <- station
-  A.try newline
+  A.many' newline
   return (mkEntry time loc temp sta)
 
 -- yyyy-MM-ddThh:mm in UTC
