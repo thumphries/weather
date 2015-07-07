@@ -1,4 +1,25 @@
-Weather Observations
+Notes
+-----
+
+- Use the `--help` flag until I write up the usage.
+- I'm pretty sure Parsec has some lazy combinators like `many1`, but
+  Attoparsec sure doesn't. The input stream kept getting forced. This led
+  to the use of Pipes, which ended up being very nifty for the other
+  parts of the task. All the components are Pipes producers, and all
+  processing jobs are Pipes Pipes.
+- Totally disregarded floating point error, so there is probably quite
+  a lot of it. Smarter implementation would use some kind of petty
+  fusion, (collect like units together first in a strict tuple, apply
+  conversions last, minimising the number of additions.)
+- Calculating distance on potentially-unordered data seemed like a
+  trap. I required the user to estimate a maximum delay, so we can use
+  a minheap as cache and flush out more accurate distance
+  calculations.
+- I know `UTCTime` et al are hella slow, but `thyme` pulls in `lens`,
+  and we don't have all day to compile this thing.
+
+
+Task: Weather Observations
 --------------------
 
 Build a tool to mine the logs of a weather balloon for important
