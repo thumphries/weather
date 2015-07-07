@@ -56,7 +56,7 @@ paramStream p = do
       (g5, _)     = split g''''
   cleanMeasure g1 >-> orderedEntries g2
                   >-> reorderedEntries (pOrdered p) g3
-                  >-> prettyPipe
+                  >-> prettyPipe False
                   >-> newlineChaos (pNewline p) g4
                   >-> mutateEntry (pMutate p) g5
 

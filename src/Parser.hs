@@ -35,10 +35,6 @@ chunkSize = 25
 parser :: MonadIO m => Producer LogEntry m ()
 parser = PB.hGet chunkSize IO.stdin >-> parseLazy ""
 
-parseEffect :: IO ()
-parseEffect = runEffect $ PB.hGet 25 IO.stdin >-> parseLazy ""
-                            >-> prettyPipe >-> P.print
-
 -- Attoparsec isn't lazy enough, but Pipes are nice.
 parseLazy :: Monad m => ByteString -> Pipe ByteString LogEntry m ()
 parseLazy rem = do
@@ -47,10 +43,10 @@ parseLazy rem = do
             Fail rem _ _ -> parseLazy rem
             Partial cb   -> error "parseWith invariant failed!"
 
-prettyPipe :: Monad m => Pipe LogEntry ByteString m ()
-prettyPipe = forever $ do
+prettyPipe :: Monad m => Bool -> Pipe LogEntry ByteString m ()
+prettyPipe ln = forever $ do
   next <- await
-  yield (pack (pretty next))
+  yield . pack $ if ln then pretty next ++ "\n" else pretty next
 
 --------------------------------------------------------------------------------
 
@@ -99,13 +95,16 @@ location = do
 temperature :: Parser Integer
 temperature = A.signed A.decimal
 
+-- Allow only ASCII alphabet in stations
 station :: Parser Station
 station = do
-  two <- A.take 2
-  return $ if | two == "AU" -> AUS
-              | two == "US" -> USA
-              | two == "FR" -> FRA
-              | otherwise   -> Other (unpack two)
+  a <- A.satisfy A.isAlpha_ascii
+  b <- A.satisfy A.isAlpha_ascii
+  let str = [a, b]
+  return $ if | str == "AU" -> AUS
+              | str == "US" -> USA
+              | str == "FR" -> FRA
+              | otherwise   -> Other str
 
 pipe :: Parser Char
 pipe = A.char '|'

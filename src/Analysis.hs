@@ -96,4 +96,3 @@ pointwiseDistance (Location x1 y1) (Location x2 y2) = realToFrac dist
   where squx = (x1 - x2) ^ 2
         squy = (y1 - y2) ^ 2
         dist = sqrt (realToFrac (squx + squy))
-

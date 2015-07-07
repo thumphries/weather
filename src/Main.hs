@@ -48,8 +48,10 @@ run (Process opts) = case opts of
   MeanTemp       -> (meanTemp parser :: IO (Maybe Kelvin)) >>= Prelude.print
   StationDistrib -> obsCount parser                        >>= Prelude.print
   Distance s     -> (distance s parser :: IO Metres)       >>= Prelude.print
-  Normalise d t  -> undefined
+  Normalise d t  -> runEffect $ parser >-> normLocPipe d >-> normTempPipe t
+                                       >-> prettyPipe True >-> PB.stdout
   Count          -> P.length parser                        >>= Prelude.print
+
 
 -- With thanks to ThoughtBot, a free --help field
 -- https://robots.thoughtbot.com/applicative-options-parsing-in-haskell
