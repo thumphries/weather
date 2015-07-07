@@ -17,15 +17,6 @@ instance Show Station where
     USA -> "US"
     Other st -> take 2 st
 
--- alternative: Length and Temperature typeclasses
--- ... and use a GADT for measurement
--- What do we even get out of this?
--- ... 1. Unique 'station' representation, questionably useful
--- ... 2. Distributes the station logic to the parser? Needs to be
---        enforced somewhere... ok, here
--- ... 3. Lose some ugly named functions like celToKel
--- ... 4. Can normalise the data without erasing the station. Good!
-
 data Measurement = forall a b. (Length a, Temperature b)
                  => Measurement Station (Location a) b
 
@@ -74,13 +65,13 @@ class RealFrac a => Temperature a where
   tconvert = fromKelvin . toKelvin
 
 
+-- Lengths
 newtype Metres = Metres { unMetres :: DUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Length Metres where
   toMetres = id
   fromMetres = id
-
 
 newtype Kilometres = Kilometres { unKilometres :: DUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
@@ -89,26 +80,21 @@ instance Length Kilometres where
   toMetres (Kilometres km) = Metres (km * 1000)
   fromMetres (Metres m) = Kilometres (m / 1000)
 
-
-
 newtype Miles = Miles { unMiles :: DUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
--- XXX Check conversion
 instance Length Miles where
   toMetres (Miles m) = Metres (m * 1609.34)
   fromMetres (Metres m) = Miles (m / 1609.34)
 
 
-
+-- Temperatures
 newtype Kelvin = Kelvin { unKelvin :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
 instance Temperature Kelvin where
   toKelvin = id
   fromKelvin = id
-
-
 
 newtype Celsius = Celsius { unCelsius :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
@@ -117,11 +103,9 @@ instance Temperature Celsius where
   toKelvin (Celsius c) = Kelvin (c + 273.15)
   fromKelvin (Kelvin k) = Celsius (k - 273.15)
 
-
 newtype Fahrenheit = Fahrenheit { unFahrenheit :: TUnit }
   deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac)
 
--- XXX Check conversion
 instance Temperature Fahrenheit where
   toKelvin (Fahrenheit f) = Kelvin ((f + 459.67) * (5/9))
-  fromKelvin (Kelvin k) = Fahrenheit ((k / (5/9)) - 459.67)
+  fromKelvin (Kelvin k) = Fahrenheit ((k * (9/5)) - 459.67)
